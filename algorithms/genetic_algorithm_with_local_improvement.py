@@ -1,108 +1,99 @@
 import random
-from ..task import Task
+from copy import deepcopy
+from constants import *
 
 class GeneticAlgorithmWithLocalImprovement:
-    def __init__(self, m, tasks, K, L, q):
-        """
-        Ініціалізація вхідних даних та параметрів генетичного алгоритму
-        m: кількість машин
-        tasks: список об'єктів Task
-        K: кількість ітерацій без покращення результату
-        L: кількість осіб в популяції
-        q: ймовірність мутації
-        """
-        self.m = m
+    def __init__(self, tasks, n, m, k=DEFAULT_ITERATION_NUM, L=DEFAULT_POPULATION_AMOUNT, q=DEFAULT_MUTATION_CHANCE):
+        self.n = n  # кількість робіт
+        self.m = m  # кількість машин
+        self.k = k  # умова завершення
+        self.L = L  # кількість осіб в популяції
+        self.q = q  # ймовірність мутації
         self.tasks = tasks
-        self.K = K
-        self.L = L
-        self.q = q
 
-    def initialize_population(self):
-        population = []
-        for _ in range(self.L):
-            individual = list(range(len(self.tasks)))
-            random.shuffle(individual)
-            population.append(individual)
-        return population
-
-    def fitness(self, individual):
-        F = [0] * self.m
+    def fitness(self, schedule):
+        """Розрахуємо ефективність розкладу."""
         total_income = 0
-        for i in individual:
-            task = self.tasks[i]
-            j = min(range(self.m), key=lambda x: F[x])
-            if F[j] + task.duration <= task.deadline:
-                F[j] += task.duration
-                total_income += task.income
+        for machine_schedule in schedule:
+            current_time = 0
+            for task in machine_schedule:
+                if current_time + task.duration <= task.deadline:
+                    current_time += task.duration
+                    total_income += task.income
         return total_income
 
-    def select_parents(self, population, fitness_scores):
-        selected = random.choices(population, weights=fitness_scores, k=2)
-        return selected
+    def initialize_population(self):
+        """Сгенеруємо початкову популяцію розкладів."""
+        population = []
+        for _ in range(self.L):
+            schedule = [[] for _ in range(self.m)]
+            tasks = deepcopy(self.tasks)
+            random.shuffle(tasks)
+            for task in tasks:
+                machine = random.randint(0, self.m - 1)
+                schedule[machine].append(task)
+            population.append(schedule)
+        return population
+
+    def select_parents(self, population, fitnesses):
+        """Оберемо батьків для кросовера на основі їхньої ефективності."""
+        total_fitness = sum(fitnesses)
+        probabilities = [fitness / total_fitness for fitness in fitnesses]
+        parents = random.choices(population, weights=probabilities, k=2)
+        return parents
 
     def crossover(self, parent1, parent2):
-        point = random.randint(1, len(parent1) - 1)
-        child1 = parent1[:point] + [gene for gene in parent2 if gene not in parent1[:point]]
-        child2 = parent2[:point] + [gene for gene in parent1 if gene not in parent2[:point]]
+        """Виконаємо кросовер між двома батьками для створення нащадків."""
+        crossover_point = random.randint(0, self.n - 1)
+        child1 = deepcopy(parent1[:crossover_point] + parent2[crossover_point:])
+        child2 = deepcopy(parent2[:crossover_point] + parent1[crossover_point:])
         return child1, child2
 
-    def mutate(self, individual):
+    def mutate(self, schedule):
+        """Мутуємо розклад, помінявши місцями дві задачі між машинами."""
         if random.random() < self.q:
-            i, j = random.sample(range(len(individual)), 2)
-            individual[i], individual[j] = individual[j], individual[i]
+            machine1, machine2 = random.sample(range(self.m), 2)
+            if schedule[machine1] and schedule[machine2]:
+                task1, task2 = random.choice(schedule[machine1]), random.choice(schedule[machine2])
+                schedule[machine1].remove(task1)
+                schedule[machine2].remove(task2)
+                schedule[machine1].append(task2)
+                schedule[machine2].append(task1)
 
-    def local_improvement(self, individual):
-        # Сортувати задачі в розкладі за зростанням дедлайнів
-        sorted_individual = sorted(individual, key=lambda i: self.tasks[i].deadline)
-        return sorted_individual
+    def local_improvement(self, schedule):
+        """Виконаємо локальне покращення, впорядкувавши задачі за їхніми директивними дедлайнами."""
+        for machine_schedule in schedule:
+            machine_schedule.sort(key=lambda task: task.deadline)
 
     def run(self):
+        """Запустимо генетичний алгоритм з локальним покращенням."""
         population = self.initialize_population()
-        fitness_scores = [self.fitness(individual) for individual in population]
-        best_solution = max(population, key=self.fitness)
-        best_score = self.fitness(best_solution)
+        fitnesses = [self.fitness(schedule) for schedule in population]
+        best_schedule = deepcopy(population[fitnesses.index(max(fitnesses))])
+        best_fitness = max(fitnesses)
+        generations = 0
 
-        no_improvement_count = 0
-        while no_improvement_count < self.K:
+        while generations < self.k:
             new_population = []
             for _ in range(self.L // 2):
-                parent1, parent2 = self.select_parents(population, fitness_scores)
+                parent1, parent2 = self.select_parents(population, fitnesses)
                 child1, child2 = self.crossover(parent1, parent2)
                 self.mutate(child1)
                 self.mutate(child2)
-                child1 = self.local_improvement(child1)
-                child2 = self.local_improvement(child2)
+                self.local_improvement(child1)
+                self.local_improvement(child2)
                 new_population.extend([child1, child2])
-
+            
             population = new_population
-            fitness_scores = [self.fitness(individual) for individual in population]
-            current_best_solution = max(population, key=self.fitness)
-            current_best_score = self.fitness(current_best_solution)
+            fitnesses = [self.fitness(schedule) for schedule in population]
+            current_best_fitness = max(fitnesses)
+            current_best_schedule = deepcopy(population[fitnesses.index(current_best_fitness)])
 
-            if current_best_score > best_score:
-                best_solution = current_best_solution
-                best_score = current_best_score
-                no_improvement_count = 0
+            if current_best_fitness > best_fitness:
+                best_fitness = current_best_fitness
+                best_schedule = current_best_schedule
+                generations = 0 
             else:
-                no_improvement_count += 1
+                generations += 1
 
-        return best_solution, best_score
-
-# Приклад використання класу GeneticAlgorithmWithLocalImprovement
-tasks = [
-    Task(1, 100, 2, 3),
-    Task(2, 200, 4, 5),
-    Task(3, 150, 3, 4),
-    Task(4, 120, 1, 3),
-    Task(5, 180, 2, 5)
-]
-
-K = 10000  # кількість ітерацій без покращення результату
-L = 100   # кількість осіб в популяції
-q = 0.1  # ймовірність мутації
-
-algorithm = GeneticAlgorithmWithLocalImprovement(3, tasks, K, L, q)
-best_solution, best_score = algorithm.run()
-
-print("Найкращий розклад робіт:", best_solution)
-print("Загальний дохід від виконаних робіт:", best_score)
+        return best_schedule, best_fitness
