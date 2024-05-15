@@ -31,9 +31,8 @@ def main():
     tasks = []
     if not data_path:
         taskGenerator = TaskGenerator(n=DEFAULT_WORKERS_NUM, m=DEFAULT_TASKS_NUM)
-        tasks = TaskGenerator.generate_tasks()
+        tasks = taskGenerator.generate_tasks()
     else:
-        tasksCsvReader = TaskCSVReader()
         tasks = TaskCSVReader.read_tasks(data_path)
 
     if experiment_id > 3 or experiment_id < 1:
@@ -45,7 +44,31 @@ def main():
         print("Average fitness values for each k:")
         for k, avg_fitness in average_results.items():
             print(f"k = {k}: Average Fitness = {avg_fitness}")
-        
-    
+    elif experiment_id == 2:
+        print('Starting experiment... \n')
+        average_fitness_results, average_time_results = run_population_experiment_2(tasks)
+        print("Average fitness values for each population size:")
+        for g, avg_fitness in average_fitness_results.items():
+            print(f"Population size = {g}: Average Fitness = {avg_fitness}, ")
+            
+        print("\nAverage execution times for each population size:")
+        for g, avg_time in average_time_results.items():
+            print(f"Population size = {g}: Average Time = {avg_time} seconds")
+    elif experiment_id == 3:
+        print('Starting experiment... \n')
+        average_time_results, average_fitness_results = run_dimension_experiment_3(N_EXPIRIMENT_VALUES, DEFAULT_WORKERS_NUM, DEFAULT_ITERATION_NUM)
+
+        print("Average execution times for each algorithm and task size (rounded to nearest second):")
+        for n, times in average_time_results.items():
+            print(f"Task size = {n}:")
+            for alg, avg_time in times.items():
+                print(f"  {alg}: Average Time = {avg_time} seconds")
+
+        print("\nAverage fitness values for each algorithm and task size:")
+        for n, fitness in average_fitness_results.items():
+            print(f"Task size = {n}:")
+            for alg, avg_fitness in fitness.items():
+                print(f"  {alg}: Average Fitness = {avg_fitness}")
+
 if __name__ == '__main__':
     main()

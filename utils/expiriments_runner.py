@@ -35,7 +35,7 @@ def run_population_experiment_2(tasks, g_values=G_EXPIRIMENT_VALUES, iterations=
     for i in range(1, iterations + 1):
         for g in g_values:
             start_time = time.time()
-            ga = GeneticAlgorithmWithLocalImprovement(tasks, n, m, L=g) 
+            ga = GeneticAlgorithmWithLocalImprovement(tasks, n, m=DEFAULT_WORKERS_NUM, L=g) 
             best_schedule, best_fitness = ga.run()
             end_time = time.time()
             
