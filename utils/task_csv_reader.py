@@ -3,7 +3,7 @@ from task import Task
 from constants import *
 
 class TaskCSVReader:
-    def read_tasks(self, file_path=CSV_FILE_PATH):
+    def read_tasks(file_path=CSV_FILE_PATH):
         tasks = []
         with open(file_path, mode='r', newline='') as file:
             reader = csv.DictReader(file)
@@ -16,3 +16,4 @@ class TaskCSVReader:
                 )
                 tasks.append(task)
         return tasks
+

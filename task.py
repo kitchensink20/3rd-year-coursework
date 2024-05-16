@@ -13,4 +13,4 @@ class Task:
         self.deadline = deadline
 
     def __repr__(self):
-        return f"Task(id={self.id}, income={self.income}, duration={self.duration}, deadline={self.deadline})"
+        return f"Задача(id={self.id}, прибуток={self.income}, тривалість={self.duration}, директивний строк={self.deadline})"
