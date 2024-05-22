@@ -89,4 +89,18 @@ class GeneticAlgorithmWithoutLocalImprovement:
             else:
                 generations += 1
 
-        return best_schedule, best_fitness
+        final_best_schedule = []
+        final_bf = 0
+        for bs in best_schedule:
+            worker_bs = []
+            passed_time = 0
+            for task in bs:
+                if task.duration + passed_time <= task.deadline:
+                    passed_time = passed_time + task.duration
+                    worker_bs.append(task)
+                    final_bf = final_bf + task.income
+                else:
+                    break
+            final_best_schedule.append(worker_bs)
+
+        return final_best_schedule, final_bf
