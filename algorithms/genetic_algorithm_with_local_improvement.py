@@ -4,12 +4,12 @@ from constants import *
 
 class GeneticAlgorithmWithLocalImprovement:
     def __init__(self, tasks, n, m, k=DEFAULT_ITERATION_NUM, L=DEFAULT_POPULATION_AMOUNT, q=DEFAULT_MUTATION_CHANCE):
-        self._n = n  # кількість робіт
-        self._m = m  # кількість машин
-        self._k = k  # умова завершення
-        self._L = L  # кількість осіб в популяції
-        self._q = q  # ймовірність мутації
-        self._tasks = tasks
+        self.n = n  # кількість робіт
+        self.m = m  # кількість машин
+        self.k = k  # умова завершення
+        self.L = L  # кількість осіб в популяції
+        self.q = q  # ймовірність мутації
+        self.tasks = tasks # масив задач
 
     def fitness(self, schedule):
         """Розрахуємо ефективність розкладу."""
@@ -25,12 +25,12 @@ class GeneticAlgorithmWithLocalImprovement:
     def initialize_population(self):
         """Сгенеруємо початкову популяцію розкладів."""
         population = []
-        for _ in range(self._L):
-            schedule = [[] for _ in range(self._m)]
-            tasks = deepcopy(self._tasks)
+        for _ in range(self.L):
+            schedule = [[] for _ in range(self.m)]
+            tasks = deepcopy(self.tasks)
             random.shuffle(tasks)
             for task in tasks:
-                machine = random.randint(0, self._m - 1)
+                machine = random.randint(0, self.m - 1)
                 schedule[machine].append(task)
             population.append(schedule)
         return population
@@ -44,15 +44,15 @@ class GeneticAlgorithmWithLocalImprovement:
 
     def crossover(self, parent1, parent2):
         """Виконаємо кросовер між двома батьками для створення нащадків."""
-        crossover_point = random.randint(0, self._n - 1)
+        crossover_point = random.randint(0, self.n - 1)
         child1 = deepcopy(parent1[:crossover_point] + parent2[crossover_point:])
         child2 = deepcopy(parent2[:crossover_point] + parent1[crossover_point:])
         return child1, child2
 
     def mutate(self, schedule):
         """Мутуємо розклад, помінявши місцями дві задачі між машинами."""
-        if random.random() < self._q:
-            machine1, machine2 = random.sample(range(self._m), 2)
+        if random.random() < self.q:
+            machine1, machine2 = random.sample(range(self.m), 2)
             if schedule[machine1] and schedule[machine2]:
                 task1, task2 = random.choice(schedule[machine1]), random.choice(schedule[machine2])
                 schedule[machine1].remove(task1)
@@ -61,9 +61,18 @@ class GeneticAlgorithmWithLocalImprovement:
                 schedule[machine2].append(task1)
 
     def local_improvement(self, schedule):
-        """Виконаємо локальне покращення, впорядкувавши задачі за їхніми директивними дедлайнами."""
+        """Впорядкування завдань у розкладі виконавця за зростанням директивних строків."""
         for machine_schedule in schedule:
             machine_schedule.sort(key=lambda task: task.deadline)
+            current_time = 0
+            valid_schedule = True
+            for task in machine_schedule:
+                if current_time + task.duration > task.deadline:
+                    valid_schedule = False
+                    break
+                current_time += task.duration
+            if not valid_schedule:
+                machine_schedule.sort(key=lambda task: (task.deadline, task.duration))
 
     def run(self):
         """Запустимо генетичний алгоритм з локальним покращенням."""
@@ -73,9 +82,9 @@ class GeneticAlgorithmWithLocalImprovement:
         best_fitness = max(fitnesses)
         generations = 0
 
-        while generations < self._k:
+        while generations < self.k:
             new_population = []
-            for _ in range(self._L // 2):
+            for _ in range(self.L // 2):
                 parent1, parent2 = self.select_parents(population, fitnesses)
                 child1, child2 = self.crossover(parent1, parent2)
                 self.mutate(child1)
@@ -101,8 +110,12 @@ class GeneticAlgorithmWithLocalImprovement:
         for bs in best_schedule:
             worker_bs = []
             passed_time = 0
-            for task in bs:
-                if task.duration + passed_time <= task.deadline:
+            for i, task in enumerate(bs):
+                if i == 0:
+                    passed_time = task.duration
+                    worker_bs.append(task)
+                    final_bf = final_bf + task.income
+                elif task.duration + passed_time <= task.deadline:
                     passed_time = passed_time + task.duration
                     worker_bs.append(task)
                     final_bf = final_bf + task.income

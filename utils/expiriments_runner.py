@@ -55,8 +55,7 @@ def run_dimension_experiment_3(n_values=N_EXPIRIMENT_VALUES, m=DEFAULT_WORKERS_N
 
     for n in n_values:
         for i in range(1, iterations + 1):
-            taskGenerator = TaskGenerator(n, m)
-            generatedTasks = taskGenerator.generate_tasks()
+            generatedTasks = TaskGenerator.generate_tasks(n)
 
             # A1 
             start_time = time.time()
